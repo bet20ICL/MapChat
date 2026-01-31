@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     if (!body.messages || !Array.isArray(body.messages)) {
       return NextResponse.json(
         { error: 'Invalid request: messages array required' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -30,9 +30,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Chat API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to process chat request' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to process chat request' }, { status: 500 })
   }
 }

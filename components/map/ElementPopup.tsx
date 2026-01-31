@@ -9,7 +9,9 @@ import { X, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import type { PinElement, ArcElement, AreaElement, RouteElement, LineElement } from '@/types'
 
-function getElementCoordinates(element: PinElement | AreaElement | RouteElement | LineElement | ArcElement): [number, number] {
+function getElementCoordinates(
+  element: PinElement | AreaElement | RouteElement | LineElement | ArcElement,
+): [number, number] {
   switch (element.type) {
     case 'pin':
       return element.coordinates
@@ -40,7 +42,7 @@ export function ElementPopup() {
 
   const selectedElement = useMemo(
     () => elements.find((el) => el.id === selectedElementId),
-    [elements, selectedElementId]
+    [elements, selectedElementId],
   )
 
   if (!selectedElement) return null
@@ -105,9 +107,7 @@ export function ElementPopup() {
             {selectedElement.timeRange && (
               <div className="text-xs text-muted-foreground">
                 <span>Date: {selectedElement.timeRange.start}</span>
-                {selectedElement.timeRange.end && (
-                  <span> - {selectedElement.timeRange.end}</span>
-                )}
+                {selectedElement.timeRange.end && <span> - {selectedElement.timeRange.end}</span>}
               </div>
             )}
           </div>

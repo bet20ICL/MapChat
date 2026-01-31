@@ -13,7 +13,7 @@ export function formatDate(isoString: string, formatStr: string = 'MMM d, yyyy')
 export function isDateInRange(
   dateStr: string | undefined,
   startStr: string | null,
-  endStr: string | null
+  endStr: string | null,
 ): boolean {
   if (!dateStr) return true
   if (!startStr || !endStr) return true

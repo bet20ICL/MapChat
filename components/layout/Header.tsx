@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useMapStore } from '@/stores/mapStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useTimelineStore } from '@/stores/timelineStore'
-import { Download, Upload, Trash2, Map, PlayCircle } from 'lucide-react'
+import { Download, Upload, Trash2, Map, PlayCircle, Columns2, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 
 const DEMO_DATA = {
@@ -64,7 +64,7 @@ const DEMO_DATA = {
       type: 'pin' as const,
       title: 'VE Day - Victory in Europe',
       description: 'Nazi Germany surrendered, ending World War II in Europe.',
-      coordinates: [13.4050, 52.5200] as [number, number],
+      coordinates: [13.405, 52.52] as [number, number],
       visible: true,
       color: '#2ecc71',
       timeRange: { start: '1945-05-08' },
@@ -73,7 +73,14 @@ const DEMO_DATA = {
   viewState: { longitude: 20, latitude: 45, zoom: 2 },
 }
 
-export function Header() {
+export type ViewMode = 'split' | 'map' | 'chat'
+
+interface HeaderProps {
+  viewMode: ViewMode
+  onViewModeChange: (mode: ViewMode) => void
+}
+
+export function Header({ viewMode, onViewModeChange }: HeaderProps) {
   const { elements, setElements, clearElements, setViewState } = useMapStore()
   const { messages, setMessages, clearMessages } = useChatStore()
   const { reset: resetTimeline } = useTimelineStore()
@@ -137,6 +144,36 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        <div className="flex items-center border rounded-md">
+          <Button
+            variant={viewMode === 'map' ? 'default' : 'outline'}
+            size="sm"
+            className="rounded-r-none border-0"
+            onClick={() => onViewModeChange('map')}
+          >
+            <Map className="h-4 w-4 mr-2" />
+            Map
+          </Button>
+          <Button
+            variant={viewMode === 'split' ? 'default' : 'outline'}
+            size="sm"
+            className="rounded-none border-0 border-x"
+            onClick={() => onViewModeChange('split')}
+          >
+            <Columns2 className="h-4 w-4 mr-2" />
+            Split
+          </Button>
+          <Button
+            variant={viewMode === 'chat' ? 'default' : 'outline'}
+            size="sm"
+            className="rounded-l-none border-0"
+            onClick={() => onViewModeChange('chat')}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Chat
+          </Button>
+        </div>
+
         <Button variant="default" size="sm" onClick={handleLoadDemo}>
           <PlayCircle className="h-4 w-4 mr-2" />
           Load Demo

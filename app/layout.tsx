@@ -10,11 +10,7 @@ export const metadata: Metadata = {
   description: 'Explore the world through AI-powered conversations with an interactive map',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>

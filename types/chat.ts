@@ -4,7 +4,7 @@ export interface ChatMessage {
   id: string
   role: MessageRole
   content: string
-  timestamp: string  // ISO date string
+  timestamp: string // ISO date string
 }
 
 export interface ChatSession {

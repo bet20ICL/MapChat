@@ -36,9 +36,7 @@ export const useChatStore = create<ChatState>()(
 
       updateMessage: (id, content) =>
         set((state) => ({
-          messages: state.messages.map((msg) =>
-            msg.id === id ? { ...msg, content } : msg
-          ),
+          messages: state.messages.map((msg) => (msg.id === id ? { ...msg, content } : msg)),
         })),
 
       clearMessages: () =>
@@ -59,6 +57,6 @@ export const useChatStore = create<ChatState>()(
     {
       name: 'mapchat-chat-store',
       partialize: (state) => ({ messages: state.messages }),
-    }
-  )
+    },
+  ),
 )

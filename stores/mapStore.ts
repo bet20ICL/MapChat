@@ -46,15 +46,14 @@ export const useMapStore = create<MapState>()(
       updateElement: (id, updates) =>
         set((state) => ({
           elements: state.elements.map((el) =>
-            el.id === id ? ({ ...el, ...updates } as MapElement) : el
+            el.id === id ? ({ ...el, ...updates } as MapElement) : el,
           ),
         })),
 
       removeElement: (id) =>
         set((state) => ({
           elements: state.elements.filter((el) => el.id !== id),
-          selectedElementId:
-            state.selectedElementId === id ? null : state.selectedElementId,
+          selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
         })),
 
       clearElements: () =>
@@ -81,6 +80,6 @@ export const useMapStore = create<MapState>()(
     }),
     {
       name: 'mapchat-map-store',
-    }
-  )
+    },
+  ),
 )

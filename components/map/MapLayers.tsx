@@ -5,12 +5,19 @@ import { Source, Layer } from 'react-map-gl/maplibre'
 import { useMapStore } from '@/stores/mapStore'
 import { useTimelineStore } from '@/stores/timelineStore'
 import { isDateInRange } from '@/lib/utils/dates'
-import type { MapElement, PinElement, AreaElement, RouteElement, LineElement, ArcElement } from '@/types'
+import type {
+  MapElement,
+  PinElement,
+  AreaElement,
+  RouteElement,
+  LineElement,
+  ArcElement,
+} from '@/types'
 
 function generateArcCoordinates(
   source: [number, number],
   target: [number, number],
-  numPoints: number = 50
+  numPoints: number = 50,
 ): [number, number][] {
   const coords: [number, number][] = []
   const [lng1, lat1] = source
@@ -35,7 +42,7 @@ export function MapLayers() {
   const filteredElements = useMemo(() => {
     if (!isEnabled) return elements.filter((el) => el.visible)
     return elements.filter(
-      (el) => el.visible && isDateInRange(el.timeRange?.start, startDate, endDate)
+      (el) => el.visible && isDateInRange(el.timeRange?.start, startDate, endDate),
     )
   }, [elements, isEnabled, startDate, endDate])
 
@@ -62,7 +69,7 @@ export function MapLayers() {
         },
       })),
     }),
-    [pins, selectedElementId]
+    [pins, selectedElementId],
   )
 
   const areasGeoJSON = useMemo(
@@ -82,7 +89,7 @@ export function MapLayers() {
         },
       })),
     }),
-    [areas, selectedElementId]
+    [areas, selectedElementId],
   )
 
   const routesGeoJSON = useMemo(
@@ -102,7 +109,7 @@ export function MapLayers() {
         },
       })),
     }),
-    [routes, selectedElementId]
+    [routes, selectedElementId],
   )
 
   const linesGeoJSON = useMemo(
@@ -122,7 +129,7 @@ export function MapLayers() {
         },
       })),
     }),
-    [lines, selectedElementId]
+    [lines, selectedElementId],
   )
 
   const arcsGeoJSON = useMemo(
@@ -142,7 +149,7 @@ export function MapLayers() {
         },
       })),
     }),
-    [arcs, selectedElementId]
+    [arcs, selectedElementId],
   )
 
   return (

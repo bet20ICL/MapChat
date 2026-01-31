@@ -14,9 +14,7 @@ export function TimelineSlider() {
 
   // Calculate the date range from all elements
   const dateRange = useMemo(() => {
-    const dates = elements
-      .flatMap((el) => [el.timeRange?.start, el.timeRange?.end])
-      .filter(Boolean)
+    const dates = elements.flatMap((el) => [el.timeRange?.start, el.timeRange?.end]).filter(Boolean)
     return getDateRange(dates)
   }, [elements])
 

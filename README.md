@@ -13,6 +13,7 @@ An AI-powered interactive map application that lets you explore geographic locat
 ## Screenshots
 
 The app consists of:
+
 - Left panel: Interactive map with OpenFreeMap tiles
 - Right panel: AI chat interface
 - Bottom: Timeline slider for temporal filtering
@@ -28,12 +29,14 @@ The app consists of:
 ### Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
-   cd mapchat
+   cd MapChat
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -41,12 +44,14 @@ The app consists of:
 3. **Configure environment variables**
 
    Create a `.env.local` file in the project root:
+
    ```bash
    # Gemini API Key
    GEMINI_API_KEY=your_api_key_here
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -59,12 +64,12 @@ The app consists of:
 
 ### Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
+| Command         | Description                              |
+| --------------- | ---------------------------------------- |
+| `npm run dev`   | Start development server with hot reload |
+| `npm run build` | Build for production                     |
+| `npm run start` | Start production server                  |
+| `npm run lint`  | Run ESLint                               |
 
 ### Project Structure
 

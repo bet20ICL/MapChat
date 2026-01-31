@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Send } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 
@@ -13,6 +12,14 @@ interface ChatInputProps {
 export function ChatInput({ onSend }: ChatInputProps) {
   const [input, setInput] = useState('')
   const { isLoading } = useChatStore()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${ta.scrollHeight}px`
+  }, [input])
 
   const handleSend = () => {
     const trimmed = input.trim()
@@ -21,7 +28,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
     setInput('')
   }
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -29,14 +36,17 @@ export function ChatInput({ onSend }: ChatInputProps) {
   }
 
   return (
-    <div className="flex gap-2 p-4 border-t">
-      <Input
+    <div className="flex items-end gap-2 p-4 border-t">
+      <textarea
+        ref={textareaRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask about places, landmarks, routes..."
         disabled={isLoading}
-        className="flex-1"
+        rows={1}
+        className="flex-1 resize-none overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ maxHeight: '10rem' }}
       />
       <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
         <Send className="h-4 w-4" />

@@ -6,7 +6,14 @@ import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'
 import { toast } from 'sonner'
 import { generateId } from '@/lib/utils/id'
-import type { MapElement, PinElement, AreaElement, RouteElement, LineElement, ArcElement } from '@/types'
+import type {
+  MapElement,
+  PinElement,
+  AreaElement,
+  RouteElement,
+  LineElement,
+  ArcElement,
+} from '@/types'
 
 interface ToolCall {
   name: string
@@ -40,8 +47,8 @@ interface RouteResult {
 }
 
 // Distance thresholds for auto mode selection (in meters)
-const WALKING_MAX_DISTANCE = 3000    // 3km - beyond this, suggest cycling
-const CYCLING_MAX_DISTANCE = 15000   // 15km - beyond this, suggest driving
+const WALKING_MAX_DISTANCE = 3000 // 3km - beyond this, suggest cycling
+const CYCLING_MAX_DISTANCE = 15000 // 15km - beyond this, suggest driving
 
 // Fetch route from OSRM with distance info
 async function fetchOSRMRoute(
@@ -49,7 +56,7 @@ async function fetchOSRMRoute(
   startLat: number,
   endLng: number,
   endLat: number,
-  mode: RouteMode = 'walking'
+  mode: RouteMode = 'walking',
 ): Promise<RouteResult | null> {
   try {
     // OSRM profile names
@@ -70,7 +77,9 @@ async function fetchOSRMRoute(
     }
 
     const route = data.routes[0]
-    console.log(`OSRM ${mode} route: ${route.geometry.coordinates.length} points, ${(route.distance / 1000).toFixed(1)}km, ${Math.round(route.duration / 60)}min`)
+    console.log(
+      `OSRM ${mode} route: ${route.geometry.coordinates.length} points, ${(route.distance / 1000).toFixed(1)}km, ${Math.round(route.duration / 60)}min`,
+    )
 
     return {
       coordinates: route.geometry.coordinates,
@@ -90,7 +99,7 @@ async function fetchSmartRoute(
   startLat: number,
   endLng: number,
   endLat: number,
-  preferredMode?: RouteMode
+  preferredMode?: RouteMode,
 ): Promise<RouteResult | null> {
   // If user specified a mode, use it directly
   if (preferredMode) {
@@ -110,12 +119,16 @@ async function fetchSmartRoute(
 
   // Check if walking distance is reasonable
   if (walkingRoute.distance <= WALKING_MAX_DISTANCE) {
-    console.log(`Walking distance ${(walkingRoute.distance / 1000).toFixed(1)}km is reasonable, using walking`)
+    console.log(
+      `Walking distance ${(walkingRoute.distance / 1000).toFixed(1)}km is reasonable, using walking`,
+    )
     return walkingRoute
   }
 
   // Too far for walking, try cycling
-  console.log(`Walking distance ${(walkingRoute.distance / 1000).toFixed(1)}km exceeds ${WALKING_MAX_DISTANCE / 1000}km, trying cycling...`)
+  console.log(
+    `Walking distance ${(walkingRoute.distance / 1000).toFixed(1)}km exceeds ${WALKING_MAX_DISTANCE / 1000}km, trying cycling...`,
+  )
   const cyclingRoute = await fetchOSRMRoute(startLng, startLat, endLng, endLat, 'cycling')
 
   if (!cyclingRoute) {
@@ -126,12 +139,16 @@ async function fetchSmartRoute(
 
   // Check if cycling distance is reasonable
   if (cyclingRoute.distance <= CYCLING_MAX_DISTANCE) {
-    console.log(`Cycling distance ${(cyclingRoute.distance / 1000).toFixed(1)}km is reasonable, using cycling`)
+    console.log(
+      `Cycling distance ${(cyclingRoute.distance / 1000).toFixed(1)}km is reasonable, using cycling`,
+    )
     return cyclingRoute
   }
 
   // Too far for cycling, use driving
-  console.log(`Cycling distance ${(cyclingRoute.distance / 1000).toFixed(1)}km exceeds ${CYCLING_MAX_DISTANCE / 1000}km, using driving...`)
+  console.log(
+    `Cycling distance ${(cyclingRoute.distance / 1000).toFixed(1)}km exceeds ${CYCLING_MAX_DISTANCE / 1000}km, using driving...`,
+  )
   const drivingRoute = await fetchOSRMRoute(startLng, startLat, endLng, endLat, 'driving')
 
   return drivingRoute || cyclingRoute // Fall back to cycling if driving fails
@@ -141,7 +158,15 @@ export function ChatPanel() {
   const { addMessage, setLoading, messages } = useChatStore()
   const { elements, addElement, updateElement, removeElement, setViewState } = useMapStore()
 
-  const handleToolCall = async (toolCall: ToolCall): Promise<{ type: string; success: boolean; mode?: RouteMode; distance?: number; duration?: number }> => {
+  const handleToolCall = async (
+    toolCall: ToolCall,
+  ): Promise<{
+    type: string
+    success: boolean
+    mode?: RouteMode
+    distance?: number
+    duration?: number
+  }> => {
     console.log('Executing tool:', toolCall.name, toolCall.args)
 
     switch (toolCall.name) {
@@ -273,7 +298,7 @@ export function ChatPanel() {
             startLat as number,
             endLng as number,
             endLat as number,
-            preferredMode
+            preferredMode,
           )
 
           if (!routeResult) {
@@ -298,14 +323,16 @@ export function ChatPanel() {
           }
 
           addElement(element)
-          console.log(`Added ${selectedMode} route: ${coordinates.length} points, ${distanceKm}km, ${durationMin}min`)
+          console.log(
+            `Added ${selectedMode} route: ${coordinates.length} points, ${distanceKm}km, ${durationMin}min`,
+          )
 
           // Show toast with route info
           toast.success(`${modeLabel} route: ${distanceKm}km, ~${durationMin} min`)
 
           // Auto-zoom to show the route
-          const allLngs = coordinates.map(c => c[0])
-          const allLats = coordinates.map(c => c[1])
+          const allLngs = coordinates.map((c) => c[0])
+          const allLats = coordinates.map((c) => c[1])
           const centerLng = (Math.min(...allLngs) + Math.max(...allLngs)) / 2
           const centerLat = (Math.min(...allLats) + Math.max(...allLats)) / 2
 
@@ -375,15 +402,18 @@ export function ChatPanel() {
         const actions = []
         if (addedCount > 0) actions.push(`Added ${addedCount} element${addedCount > 1 ? 's' : ''}`)
         if (routeCount > 0) actions.push(`Added ${routeCount} route${routeCount > 1 ? 's' : ''}`)
-        if (updatedCount > 0) actions.push(`Updated ${updatedCount} element${updatedCount > 1 ? 's' : ''}`)
-        if (removedCount > 0) actions.push(`Removed ${removedCount} element${removedCount > 1 ? 's' : ''}`)
+        if (updatedCount > 0)
+          actions.push(`Updated ${updatedCount} element${updatedCount > 1 ? 's' : ''}`)
+        if (removedCount > 0)
+          actions.push(`Removed ${removedCount} element${removedCount > 1 ? 's' : ''}`)
         if (actions.length > 0) {
           toast.success(actions.join(', '))
         }
       }
 
       // Add assistant message
-      const responseContent = data.content || (data.toolCalls?.length > 0 ? 'Done! I\'ve updated the map for you.' : '')
+      const responseContent =
+        data.content || (data.toolCalls?.length > 0 ? "Done! I've updated the map for you." : '')
       if (responseContent) {
         addMessage('assistant', responseContent)
       }

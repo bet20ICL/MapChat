@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 interface TimelineState {
-  startDate: string | null  // ISO date string
-  endDate: string | null    // ISO date string
+  startDate: string | null // ISO date string
+  endDate: string | null // ISO date string
   isEnabled: boolean
 
   // Actions
@@ -39,6 +39,6 @@ export const useTimelineStore = create<TimelineState>()(
     }),
     {
       name: 'mapchat-timeline-store',
-    }
-  )
+    },
+  ),
 )

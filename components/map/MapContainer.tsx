@@ -17,7 +17,7 @@ export function MapContainer() {
     (evt: { viewState: typeof viewState }) => {
       setViewState(evt.viewState)
     },
-    [setViewState]
+    [setViewState],
   )
 
   const handleClick = useCallback(
@@ -34,7 +34,7 @@ export function MapContainer() {
       // Clicked on empty space
       setSelectedElement(null)
     },
-    [setSelectedElement]
+    [setSelectedElement],
   )
 
   return (
@@ -45,7 +45,13 @@ export function MapContainer() {
       onClick={handleClick}
       style={{ width: '100%', height: '100%' }}
       mapStyle={OPENFREEMAP_STYLE}
-      interactiveLayerIds={['pins-layer', 'areas-layer', 'routes-layer', 'lines-layer', 'arcs-layer']}
+      interactiveLayerIds={[
+        'pins-layer',
+        'areas-layer',
+        'routes-layer',
+        'lines-layer',
+        'arcs-layer',
+      ]}
     >
       <NavigationControl position="top-left" />
       <MapLayers />
