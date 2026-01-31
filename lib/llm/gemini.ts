@@ -94,6 +94,42 @@ const setMapViewTool: FunctionDeclaration = {
   },
 }
 
+// Tool 5: Get route between two points (follows actual roads/paths)
+const getRouteTool: FunctionDeclaration = {
+  name: 'getRoute',
+  description: 'Get a route between two locations that follows actual roads or paths. The system will AUTO-SELECT the best transport mode based on distance (walking for <3km, cycling for 3-15km, driving for >15km) unless the user specifies a preference. IMPORTANT: After the route is created, tell the user what mode was selected and why if they didn\'t specify one.',
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      startLng: {
+        type: SchemaType.NUMBER,
+        description: 'Longitude of the starting point',
+      } as const,
+      startLat: {
+        type: SchemaType.NUMBER,
+        description: 'Latitude of the starting point',
+      } as const,
+      endLng: {
+        type: SchemaType.NUMBER,
+        description: 'Longitude of the destination',
+      } as const,
+      endLat: {
+        type: SchemaType.NUMBER,
+        description: 'Latitude of the destination',
+      } as const,
+      mode: {
+        type: SchemaType.STRING,
+        description: 'Optional transport mode: "walking", "driving", or "cycling". Only set this if the user explicitly requests a specific mode. Leave empty to auto-select based on distance.',
+      } as const,
+      properties: {
+        type: SchemaType.STRING,
+        description: 'JSON string with route properties: { title, description, color? }',
+      } as const,
+    },
+    required: ['startLng', 'startLat', 'endLng', 'endLat', 'properties'],
+  },
+}
+
 export interface ToolCall {
   name: string
   args: Record<string, unknown>
@@ -118,6 +154,7 @@ export async function chatWithMapTools(
         updateMapElementTool,
         removeMapElementTool,
         setMapViewTool,
+        getRouteTool,
       ]
     }],
   })
@@ -149,7 +186,7 @@ Use accurate real-world coordinates (longitude, latitude) for locations.`
 
   console.log('\n========== CHAT WITH MAP TOOLS ==========')
   console.log('Model: gemini-2.0-flash')
-  console.log('Tools: addMapElement, updateMapElement, removeMapElement, setMapView')
+  console.log('Tools: addMapElement, updateMapElement, removeMapElement, setMapView, getRoute')
   console.log('Messages count:', messages.length)
   console.log('Last message:', lastMessage.content)
   console.log('Map state elements count:', JSON.parse(mapState).length)
