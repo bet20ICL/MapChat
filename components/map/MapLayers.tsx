@@ -35,22 +35,26 @@ function generateArcCoordinates(
   return coords
 }
 
+type WithRange<T> = T & { inRange: boolean }
+
 export function MapLayers() {
   const { elements, selectedElementId, setSelectedElement } = useMapStore()
   const { startDate, endDate, isEnabled } = useTimelineStore()
 
-  const filteredElements = useMemo(() => {
-    if (!isEnabled) return elements.filter((el) => el.visible)
-    return elements.filter(
-      (el) => el.visible && isDateInRange(el.timeRange?.start, startDate, endDate),
-    )
+  const visibleElements = useMemo(() => {
+    return elements
+      .filter((el) => el.visible)
+      .map((el) => ({
+        ...el,
+        inRange: !isEnabled || isDateInRange(el.timeRange?.start, startDate, endDate),
+      }))
   }, [elements, isEnabled, startDate, endDate])
 
-  const pins = filteredElements.filter((el): el is PinElement => el.type === 'pin')
-  const areas = filteredElements.filter((el): el is AreaElement => el.type === 'area')
-  const routes = filteredElements.filter((el): el is RouteElement => el.type === 'route')
-  const lines = filteredElements.filter((el): el is LineElement => el.type === 'line')
-  const arcs = filteredElements.filter((el): el is ArcElement => el.type === 'arc')
+  const pins = visibleElements.filter((el): el is WithRange<PinElement> => el.type === 'pin')
+  const areas = visibleElements.filter((el): el is WithRange<AreaElement> => el.type === 'area')
+  const routes = visibleElements.filter((el): el is WithRange<RouteElement> => el.type === 'route')
+  const lines = visibleElements.filter((el): el is WithRange<LineElement> => el.type === 'line')
+  const arcs = visibleElements.filter((el): el is WithRange<ArcElement> => el.type === 'arc')
 
   const areasGeoJSON = useMemo(
     () => ({
@@ -62,6 +66,7 @@ export function MapLayers() {
           title: area.title,
           color: area.color || '#4ECDC4',
           selected: area.id === selectedElementId,
+          inRange: area.inRange,
         },
         geometry: {
           type: 'Polygon' as const,
@@ -82,6 +87,7 @@ export function MapLayers() {
           title: route.title,
           color: route.color || '#45B7D1',
           selected: route.id === selectedElementId,
+          inRange: route.inRange,
         },
         geometry: {
           type: 'LineString' as const,
@@ -102,6 +108,7 @@ export function MapLayers() {
           title: line.title,
           color: line.color || '#96CEB4',
           selected: line.id === selectedElementId,
+          inRange: line.inRange,
         },
         geometry: {
           type: 'LineString' as const,
@@ -122,6 +129,7 @@ export function MapLayers() {
           title: arc.title,
           color: arc.color || '#DDA0DD',
           selected: arc.id === selectedElementId,
+          inRange: arc.inRange,
         },
         geometry: {
           type: 'LineString' as const,
@@ -140,16 +148,17 @@ export function MapLayers() {
           id="areas-layer"
           type="fill"
           paint={{
-            'fill-color': ['get', 'color'],
-            'fill-opacity': ['case', ['get', 'selected'], 0.6, 0.3],
+            'fill-color': ['case', ['get', 'inRange'], ['get', 'color'], '#9CA3AF'],
+            'fill-opacity': ['case', ['get', 'selected'], 0.6, ['get', 'inRange'], 0.3, 0.08],
           }}
         />
         <Layer
           id="areas-outline-layer"
           type="line"
           paint={{
-            'line-color': ['get', 'color'],
-            'line-width': ['case', ['get', 'selected'], 3, 1],
+            'line-color': ['case', ['get', 'inRange'], ['get', 'color'], '#9CA3AF'],
+            'line-width': ['case', ['get', 'selected'], 3, ['get', 'inRange'], 1, 0.5],
+            'line-opacity': ['case', ['get', 'inRange'], 1, 0.3],
           }}
         />
       </Source>
@@ -160,8 +169,9 @@ export function MapLayers() {
           id="routes-layer"
           type="line"
           paint={{
-            'line-color': ['get', 'color'],
-            'line-width': ['case', ['get', 'selected'], 5, 3],
+            'line-color': ['case', ['get', 'inRange'], ['get', 'color'], '#9CA3AF'],
+            'line-width': ['case', ['get', 'selected'], 5, ['get', 'inRange'], 3, 1.5],
+            'line-opacity': ['case', ['get', 'inRange'], 1, 0.3],
             'line-dasharray': [2, 1],
           }}
         />
@@ -173,8 +183,9 @@ export function MapLayers() {
           id="lines-layer"
           type="line"
           paint={{
-            'line-color': ['get', 'color'],
-            'line-width': ['case', ['get', 'selected'], 4, 2],
+            'line-color': ['case', ['get', 'inRange'], ['get', 'color'], '#9CA3AF'],
+            'line-width': ['case', ['get', 'selected'], 4, ['get', 'inRange'], 2, 1],
+            'line-opacity': ['case', ['get', 'inRange'], 1, 0.3],
           }}
         />
       </Source>
@@ -185,8 +196,9 @@ export function MapLayers() {
           id="arcs-layer"
           type="line"
           paint={{
-            'line-color': ['get', 'color'],
-            'line-width': ['case', ['get', 'selected'], 4, 2],
+            'line-color': ['case', ['get', 'inRange'], ['get', 'color'], '#9CA3AF'],
+            'line-width': ['case', ['get', 'selected'], 4, ['get', 'inRange'], 2, 1],
+            'line-opacity': ['case', ['get', 'inRange'], 1, 0.3],
           }}
         />
       </Source>
@@ -206,8 +218,12 @@ export function MapLayers() {
               setSelectedElement(pin.id)
             }}
             style={{
-              transform: pin.id === selectedElementId ? 'scale(1.2)' : 'scale(1)',
-              transition: 'transform 0.2s',
+              transform: pin.id === selectedElementId
+                ? 'scale(1.2)'
+                : pin.inRange ? 'scale(1)' : 'scale(0.6)',
+              opacity: pin.inRange ? 1 : 0.35,
+              filter: pin.inRange ? 'none' : 'grayscale(100%)',
+              transition: 'all 0.3s ease',
             }}
           >
             <div
@@ -215,18 +231,20 @@ export function MapLayers() {
               style={{
                 width: 36,
                 height: 36,
-                border: `3px solid ${pin.color || '#FF6B6B'}`,
+                border: `3px solid ${pin.inRange ? (pin.color || '#FF6B6B') : '#9CA3AF'}`,
                 fontSize: 20,
               }}
             >
               {pin.icon || '📍'}
             </div>
-            <div
-              className="mt-1 px-1 text-xs font-medium text-center bg-white/90 rounded shadow-sm max-w-[100px] truncate"
-              style={{ color: '#333' }}
-            >
-              {pin.title}
-            </div>
+            {pin.inRange && (
+              <div
+                className="mt-1 px-1 text-xs font-medium text-center bg-white/90 rounded shadow-sm max-w-[100px] truncate"
+                style={{ color: '#333' }}
+              >
+                {pin.title}
+              </div>
+            )}
           </div>
         </Marker>
       ))}
