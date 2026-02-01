@@ -116,6 +116,19 @@ export function TimelineSlider() {
     if (dragging) setPlaying(false)
   }, [dragging])
 
+  // Pre-calculate event time ranges for the playback logic
+  const eventRanges = useMemo(() => {
+    return elements
+      .filter((el) => el.timeRange?.start)
+      .map((el) => ({
+        start: new Date(el.timeRange!.start).getTime(),
+        end: el.timeRange!.end
+          ? new Date(el.timeRange!.end).getTime()
+          : new Date(el.timeRange!.start).getTime(),
+      }))
+      .sort((a, b) => a.start - b.start)
+  }, [elements])
+
   // Play animation: advance the window by stepMs each tick
   useEffect(() => {
     if (!playing) return
@@ -123,7 +136,51 @@ export function TimelineSlider() {
     const id = setInterval(() => {
       const { start, end } = playRef.current
       const windowSize = end - start
-      const newStart = start + stepMs
+
+      // Check if we are currently "watching" an event
+      // An event is visible if it overlaps with [start, end]
+      const isWatchingEvent = eventRanges.some(
+        (range) => range.start < end && range.end > start
+      )
+
+      let actualStep = stepMs
+
+      if (!isWatchingEvent) {
+        // We are in dead air. Find the NEXT event start that is after our current window end.
+        const nextEvent = eventRanges.find((range) => range.start >= end)
+
+        if (nextEvent) {
+          // Distance to the next event
+          const distanceToNext = nextEvent.start - end
+
+          // We want to arrive exactly at (nextEvent.start - windowSize) so the event JUST enters the window on the right?
+          // Actually, we usually want the event to enter smoothly. 
+          // Let's speed up up to 20x, but ensure we slow down as we approach.
+
+          // If we are very far, go fast.
+          // If we are closer than 1 step, go normal.
+          // We want to be careful not to overshoot the interaction start.
+
+          // Let's cap the fast forwarding so we don't jump OVER an event.
+          // We can jump at most distanceToNext.
+          // But we want to see it slide in? 
+          // If we jump `distanceToNext`, the event will be exactly at the right edge `end`.
+          // That is fine. 
+
+          const maxFastStep = stepMs * 20
+          // If distance is large, take a big step. 
+          // If distance is small, take the smaller of the two.
+          // Subtract a small buffer (e.g. stepMs) so we slow down right before it enters?
+          // Actually simplest is: move as fast as possible up to the next event.
+
+          actualStep = Math.min(maxFastStep, Math.max(stepMs, distanceToNext - stepMs))
+        } else {
+          // No more events? Speed to the end.
+          actualStep = stepMs * 20
+        }
+      }
+
+      const newStart = start + actualStep
       const newEnd = newStart + windowSize
 
       if (newEnd >= maxTime) {
@@ -136,7 +193,7 @@ export function TimelineSlider() {
     }, 150)
 
     return () => clearInterval(id)
-  }, [playing, stepMs, maxTime, setRange])
+  }, [playing, stepMs, maxTime, setRange, eventRanges])
 
   if (!dateRange) return null
 
@@ -209,7 +266,28 @@ export function TimelineSlider() {
           className="relative h-8 flex items-center select-none touch-none"
         >
           {/* Track background */}
-          <div className="absolute inset-x-0 h-2 rounded-full bg-secondary" />
+          <div className="absolute inset-x-0 h-2 rounded-full bg-secondary overflow-hidden">
+            {/* Activity Indicators (Deadtime visualization) */}
+            {eventRanges.map((range, i) => {
+              // Simple merging of overlaps for display could be done, 
+              // but opacity accumulation is also a nice effect.
+              // Let's just render them. 
+              const startP = totalRange > 0 ? ((range.start - minTime) / totalRange) * 100 : 0
+              const endP = totalRange > 0 ? ((range.end - minTime) / totalRange) * 100 : 0
+              const widthP = Math.max(0.5, endP - startP) // Ensure at least a thin line for point events
+
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 bg-primary/20"
+                  style={{
+                    left: `${startP}%`,
+                    width: `${widthP}%`,
+                  }}
+                />
+              )
+            })}
+          </div>
 
           {/* Active range bar (draggable) */}
           <div
