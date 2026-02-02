@@ -280,6 +280,7 @@ export function MapContainer() {
         mapStyle={isDark ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE}
         interactiveLayerIds={['areas-layer', 'routes-layer', 'lines-layer', 'arcs-layer']}
         maxPitch={85}
+        // @ts-expect-error preserveDrawingBuffer is forwarded to the underlying map instance
         preserveDrawingBuffer={true}
       >
         <NavigationControl position="top-left" visualizePitch={true} showCompass={true} />
