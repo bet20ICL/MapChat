@@ -1,6 +1,12 @@
-import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from '@google/generative-ai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { LLMMessage } from './types'
 import { SYSTEM_PROMPT } from './prompts'
+import {
+  ALL_TOOL_DECLARATIONS,
+  ACTION_TOOL_NAMES,
+  DATA_TOOL_NAMES,
+  executeDataTool,
+} from './tools'
 
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY
@@ -8,133 +14,6 @@ const getGeminiClient = () => {
     throw new Error('GEMINI_API_KEY is not set')
   }
   return new GoogleGenerativeAI(apiKey)
-}
-
-// Tool 1: Add a new map element
-const addMapElementTool: FunctionDeclaration = {
-  name: 'addMapElement',
-  description:
-    'Add a new element to the map. Use this to create pins for locations, areas for regions, routes for paths, arcs for connections between places, or lines.',
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      elementType: {
-        type: SchemaType.STRING,
-        description: 'Type of element: "pin", "area", "route", "arc", or "line"',
-      } as const,
-      coordinates: {
-        type: SchemaType.STRING,
-        description:
-          'JSON string of coordinates. For pin: "[lng, lat]". For area: "[[[lng,lat], ...]]". For route/line: "[[lng,lat], ...]". For arc: "{ source: [lng,lat], target: [lng,lat] }"',
-      } as const,
-      properties: {
-        type: SchemaType.STRING,
-        description:
-          'JSON string with element properties: { title, description, color?, icon? (emoji for pins, e.g. "⚔️" for battles, "🏰" for castles, "🏛️" for monuments), timeRange?: { start, end? }, article?: { title, content } }',
-      } as const,
-    },
-    required: ['elementType', 'coordinates', 'properties'],
-  },
-}
-
-// Tool 2: Update an existing map element
-const updateMapElementTool: FunctionDeclaration = {
-  name: 'updateMapElement',
-  description:
-    'Update properties of an existing map element by its ID. Use this to modify title, description, color, visibility, or other properties.',
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      elementId: {
-        type: SchemaType.STRING,
-        description: 'The ID of the element to update',
-      } as const,
-      newProperties: {
-        type: SchemaType.STRING,
-        description:
-          'JSON string with properties to update: { title?, description?, color?, visible?, timeRange?, article? }',
-      } as const,
-    },
-    required: ['elementId', 'newProperties'],
-  },
-}
-
-// Tool 3: Remove a map element
-const removeMapElementTool: FunctionDeclaration = {
-  name: 'removeMapElement',
-  description: 'Remove an element from the map by its ID.',
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      elementId: {
-        type: SchemaType.STRING,
-        description: 'The ID of the element to remove',
-      } as const,
-    },
-    required: ['elementId'],
-  },
-}
-
-// Tool 4: Set map view
-const setMapViewTool: FunctionDeclaration = {
-  name: 'setMapView',
-  description: 'Set the map view to focus on a specific location and zoom level.',
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      longitude: {
-        type: SchemaType.NUMBER,
-        description: 'Longitude of the center point',
-      } as const,
-      latitude: {
-        type: SchemaType.NUMBER,
-        description: 'Latitude of the center point',
-      } as const,
-      zoom: {
-        type: SchemaType.NUMBER,
-        description: 'Zoom level (1-20, where 1 is world view and 20 is street level)',
-      } as const,
-    },
-    required: ['longitude', 'latitude', 'zoom'],
-  },
-}
-
-// Tool 5: Get route between two points (follows actual roads/paths)
-const getRouteTool: FunctionDeclaration = {
-  name: 'getRoute',
-  description:
-    "Get a route between two locations that follows actual roads or paths. The system will AUTO-SELECT the best transport mode based on distance (walking for <3km, cycling for 3-15km, driving for >15km) unless the user specifies a preference. IMPORTANT: After the route is created, tell the user what mode was selected and why if they didn't specify one.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      startLng: {
-        type: SchemaType.NUMBER,
-        description: 'Longitude of the starting point',
-      } as const,
-      startLat: {
-        type: SchemaType.NUMBER,
-        description: 'Latitude of the starting point',
-      } as const,
-      endLng: {
-        type: SchemaType.NUMBER,
-        description: 'Longitude of the destination',
-      } as const,
-      endLat: {
-        type: SchemaType.NUMBER,
-        description: 'Latitude of the destination',
-      } as const,
-      mode: {
-        type: SchemaType.STRING,
-        description:
-          'Optional transport mode: "walking", "driving", or "cycling". Only set this if the user explicitly requests a specific mode. Leave empty to auto-select based on distance.',
-      } as const,
-      properties: {
-        type: SchemaType.STRING,
-        description: 'JSON string with route properties: { title, description, color? }',
-      } as const,
-    },
-    required: ['startLng', 'startLat', 'endLng', 'endLat', 'properties'],
-  },
 }
 
 export interface ToolCall {
@@ -147,37 +26,28 @@ export interface ChatWithToolsResult {
   toolCalls?: ToolCall[]
 }
 
-// Chat function with map control tools
+const MAX_LOOP_ITERATIONS = 10
+
+const actionToolSet = new Set<string>(ACTION_TOOL_NAMES)
+const dataToolSet = new Set<string>(DATA_TOOL_NAMES)
+
 export async function chatWithMapTools(
   messages: LLMMessage[],
-  mapState: string, // JSON string of current map elements
+  mapState: string,
 ): Promise<ChatWithToolsResult> {
   const genAI = getGeminiClient()
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-pro',
-    tools: [
-      {
-        functionDeclarations: [
-          addMapElementTool,
-          updateMapElementTool,
-          removeMapElementTool,
-          setMapViewTool,
-          getRouteTool,
-        ],
-      },
-    ],
+    tools: [{ functionDeclarations: ALL_TOOL_DECLARATIONS }],
   })
 
-  // Build system prompt with map state context
   const systemWithMapState = `${SYSTEM_PROMPT}
 
 CURRENT MAP STATE:
 ${mapState}
 
-When adding elements, generate unique IDs like "pin_1", "area_1", etc. Check the current map state to avoid duplicate IDs.
-Use accurate real-world coordinates (longitude, latitude) for locations.`
+When adding elements, generate unique IDs like "pin_1", "area_1", etc. Check the current map state to avoid duplicate IDs.`
 
-  // Convert messages to Gemini format
   const history = messages.slice(0, -1).map((msg) => ({
     role: msg.role === 'assistant' ? ('model' as const) : ('user' as const),
     parts: [{ text: msg.content }],
@@ -193,42 +63,89 @@ Use accurate real-world coordinates (longitude, latitude) for locations.`
 
   const lastMessage = messages[messages.length - 1]
 
-  console.log('\n========== CHAT WITH MAP TOOLS ==========')
+  console.log('\n========== CHAT WITH MAP TOOLS (AGENTIC) ==========')
   console.log('Model: gemini-2.5-pro')
-  console.log('Tools: addMapElement, updateMapElement, removeMapElement, setMapView, getRoute')
   console.log('Messages count:', messages.length)
   console.log('Last message:', lastMessage.content)
   console.log('Map state elements count:', JSON.parse(mapState).length)
-  console.log('--- History ---')
-  history.forEach((h, i) =>
-    console.log(`  ${i + 1}. [${h.role}]: ${h.parts[0].text.substring(0, 100)}...`),
-  )
-  console.log('--- End History ---\n')
 
-  const result = await chat.sendMessage(lastMessage.content)
-  const response = result.response
+  // Accumulated action tool calls to return to client
+  const accumulatedActionCalls: ToolCall[] = []
+  let finalContent = ''
 
-  // Check for function calls
-  const functionCalls = response.functionCalls()
+  // Send initial message
+  let result = await chat.sendMessage(lastMessage.content)
+  let response = result.response
 
-  if (functionCalls && functionCalls.length > 0) {
-    console.log('--- Tool Calls ---')
-    console.log(JSON.stringify(functionCalls, null, 2))
-    console.log('--- End Tool Calls ---\n')
+  // ── Agentic loop ─────────────────────────────────────────────────────────
+  for (let i = 0; i < MAX_LOOP_ITERATIONS; i++) {
+    const functionCalls = response.functionCalls()
 
-    return {
-      content: response.text() || '',
-      toolCalls: functionCalls.map((fc) => ({
-        name: fc.name,
-        args: fc.args as Record<string, unknown>,
-      })),
+    if (!functionCalls || functionCalls.length === 0) {
+      // No tool calls — capture final text and break
+      finalContent = response.text() || ''
+      break
+    }
+
+    console.log(`--- Loop iteration ${i + 1}: ${functionCalls.length} tool call(s) ---`)
+
+    // Process each function call and build response parts
+    const functionResponses: Array<{
+      functionResponse: { name: string; response: unknown }
+    }> = []
+
+    for (const fc of functionCalls) {
+      const name = fc.name
+      const args = fc.args as Record<string, unknown>
+
+      if (dataToolSet.has(name)) {
+        // ── Data tool: execute server-side, return real result to LLM ──
+        console.log(`  [DATA] ${name}(${JSON.stringify(args).substring(0, 200)})`)
+        const { dataResult, actionToolCall } = await executeDataTool(name, args)
+        console.log(`  [DATA] ${name} result:`, JSON.stringify(dataResult).substring(0, 300))
+
+        // If the data tool also produces an action (calculateRoute), accumulate it
+        if (actionToolCall) {
+          accumulatedActionCalls.push(actionToolCall)
+        }
+
+        functionResponses.push({
+          functionResponse: { name, response: dataResult },
+        })
+      } else if (actionToolSet.has(name)) {
+        // ── Action tool: accumulate for client, stub success to LLM ──
+        console.log(`  [ACTION] ${name}(${JSON.stringify(args).substring(0, 200)})`)
+        accumulatedActionCalls.push({ name, args })
+
+        functionResponses.push({
+          functionResponse: { name, response: { success: true } },
+        })
+      } else {
+        console.warn(`  [UNKNOWN] ${name}`)
+        functionResponses.push({
+          functionResponse: { name, response: { error: `Unknown tool: ${name}` } },
+        })
+      }
+    }
+
+    // Send all function responses back to Gemini
+    result = await chat.sendMessage(functionResponses)
+    response = result.response
+
+    // Capture any text the model produced alongside potential new tool calls
+    try {
+      const text = response.text()
+      if (text) finalContent = text
+    } catch {
+      // text() throws if response only contains function calls
     }
   }
 
-  const responseText = response.text()
-  console.log('--- Response ---')
-  console.log(responseText)
-  console.log('==========================================\n')
+  console.log(`--- Final: ${accumulatedActionCalls.length} action call(s), content length: ${finalContent.length} ---`)
+  console.log('====================================================\n')
 
-  return { content: responseText }
+  return {
+    content: finalContent,
+    toolCalls: accumulatedActionCalls.length > 0 ? accumulatedActionCalls : undefined,
+  }
 }

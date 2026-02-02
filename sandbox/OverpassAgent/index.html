@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoJSON Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    body { margin: 0; }
+    #map { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; OpenStreetMap contributors'
+          }
+        },
+        layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+      },
+      center: [0, 30],
+      zoom: 2
+    });
+
+    map.on('load', () => {
+      fetch('data.geojson')
+        .then(r => r.json())
+        .then(geojson => {
+          map.addSource('data', { type: 'geojson', data: geojson });
+
+          map.addLayer({
+            id: 'points',
+            type: 'circle',
+            source: 'data',
+            paint: {
+              'circle-radius': 7,
+              'circle-color': '#e55e5e',
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#fff'
+            }
+          });
+
+          map.on('click', 'points', (e) => {
+            const p = e.features[0].properties;
+            let html = `<strong>${p.name || 'Unnamed'}</strong>`;
+            const skip = new Set(['name', 'name:en']);
+            for (const [k, v] of Object.entries(p)) {
+              if (!skip.has(k)) html += `<br><em>${k}:</em> ${v}`;
+            }
+            new maplibregl.Popup()
+              .setLngLat(e.lngLat)
+              .setHTML(html)
+              .addTo(map);
+          });
+
+          map.on('mouseenter', 'points', () => map.getCanvas().style.cursor = 'pointer');
+          map.on('mouseleave', 'points', () => map.getCanvas().style.cursor = '');
+
+          // Fit bounds to data
+          const coords = geojson.features.map(f => f.geometry.coordinates);
+          if (coords.length > 0) {
+            const bounds = coords.reduce(
+              (b, c) => b.extend(c),
+              new maplibregl.LngLatBounds(coords[0], coords[0])
+            );
+            map.fitBounds(bounds, { padding: 60 });
+          }
+        })
+        .catch(() => {
+          document.body.innerHTML = '<p style="padding:2em;font-family:sans-serif">No data.geojson found. Run the agent first:<br><code>npx tsx agent.ts "your query"</code></p>';
+        });
+    });
+  </script>
+</body>
+</html>

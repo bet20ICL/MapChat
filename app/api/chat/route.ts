@@ -1,3 +1,5 @@
+export const maxDuration = 60
+
 import { NextRequest, NextResponse } from 'next/server'
 import { chatWithMapTools } from '@/lib/llm/gemini'
 import type { LLMMessage } from '@/lib/llm/types'
