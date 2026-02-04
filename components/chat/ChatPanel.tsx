@@ -1,11 +1,15 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useChatStore } from '@/stores/chatStore'
 import { useMapStore } from '@/stores/mapStore'
 import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'
 import { toast } from 'sonner'
 import { generateId } from '@/lib/utils/id'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { KeyRound } from 'lucide-react'
 import type {
   MapElement,
   PinElement,
@@ -28,6 +32,16 @@ interface ChatResponse {
 export function ChatPanel() {
   const { addMessage, setLoading, messages } = useChatStore()
   const { elements, addElement, updateElement, removeElement, setViewState } = useMapStore()
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [hasServerKey, setHasServerKey] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => setHasServerKey(data.hasServerKey))
+      .catch(() => setHasServerKey(false))
+  }, [])
 
   const handleToolCall = async (
     toolCall: ToolCall,
@@ -180,8 +194,20 @@ export function ChatPanel() {
             { role: 'user', content },
           ],
           mapState: JSON.stringify(elements),
+          apiKey,
         }),
       })
+
+      if (response.status === 401) {
+        if (!hasServerKey) {
+          setApiKey(null)
+          setApiKeyInput('')
+          toast.error('Invalid API key. Please enter a valid key.')
+        } else {
+          toast.error('Server API key is misconfigured.')
+        }
+        return
+      }
 
       if (!response.ok) {
         throw new Error('Failed to get chat response')
@@ -229,6 +255,71 @@ export function ChatPanel() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const needsApiKey = hasServerKey === false && !apiKey
+
+  if (hasServerKey === null) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="px-4 py-3 border-b">
+          <h2 className="font-semibold">Chat</h2>
+          <p className="text-xs text-muted-foreground">{elements.length} elements on map</p>
+        </div>
+        <div className="flex-1" />
+      </div>
+    )
+  }
+
+  if (needsApiKey) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="px-4 py-3 border-b">
+          <h2 className="font-semibold">Chat</h2>
+          <p className="text-xs text-muted-foreground">{elements.length} elements on map</p>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-sm space-y-4 text-center">
+            <KeyRound className="h-10 w-10 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold text-lg">Enter your Gemini API Key</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                This app requires a Google Gemini API key to work. Your key is only stored in memory and never saved.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const trimmed = apiKeyInput.trim()
+                if (trimmed) setApiKey(trimmed)
+              }}
+              className="flex flex-col gap-2"
+            >
+              <Input
+                type="password"
+                placeholder="AIzaSy..."
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+              />
+              <Button type="submit" disabled={!apiKeyInput.trim()}>
+                Start Chatting
+              </Button>
+            </form>
+            <p className="text-xs text-muted-foreground">
+              Get a key at{' '}
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                aistudio.google.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

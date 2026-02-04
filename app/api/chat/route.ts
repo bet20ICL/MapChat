@@ -7,6 +7,7 @@ import type { LLMMessage } from '@/lib/llm/types'
 interface ChatRequestBody {
   messages: LLMMessage[]
   mapState: string // JSON string of current map elements
+  apiKey?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -20,10 +21,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const apiKey = body.apiKey || process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key is required' },
+        { status: 401 },
+      )
+    }
+
     const mapState = body.mapState || '[]'
 
     // Chat with map control tools
-    const result = await chatWithMapTools(body.messages, mapState)
+    const result = await chatWithMapTools(body.messages, mapState, apiKey)
 
     // Return the response with any tool calls
     return NextResponse.json({

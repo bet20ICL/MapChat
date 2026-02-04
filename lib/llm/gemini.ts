@@ -8,11 +8,7 @@ import {
   executeDataTool,
 } from './tools'
 
-const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set')
-  }
+const getGeminiClient = (apiKey: string) => {
   return new GoogleGenerativeAI(apiKey)
 }
 
@@ -34,8 +30,9 @@ const dataToolSet = new Set<string>(DATA_TOOL_NAMES)
 export async function chatWithMapTools(
   messages: LLMMessage[],
   mapState: string,
+  apiKey: string,
 ): Promise<ChatWithToolsResult> {
-  const genAI = getGeminiClient()
+  const genAI = getGeminiClient(apiKey)
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-pro',
     tools: [{ functionDeclarations: ALL_TOOL_DECLARATIONS }],
